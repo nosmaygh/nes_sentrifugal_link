@@ -208,13 +208,20 @@ public static function _checkMail($options = array()) {
 		$mail->Port = $config['port']; // or 587
 		$mail->SMTPOptions = array('ssl' => array('verify_peer' => false,'verify_peer_name' => false,'allow_self_signed' => true));
 	
-	    $yahoo_smtp = strpos($config['username'], 'yahoo');
-		if($yahoo_smtp !== false) {
-			//Fix for Yahoo SMTP configuration.
-			$mail->setFrom($config['username'],'Do not Reply');
-		} else {
-			$mail->setFrom($options['fromEmail'],$options['fromName']);
-		}
+	    // $yahoo_smtp = strpos($config['username'], 'yahoo');
+		// if($yahoo_smtp !== false) {
+		// 	//Fix for Yahoo SMTP configuration.
+		// 	$mail->setFrom($config['username'],'Do not Reply');
+		// } else {
+		// 	$mail->setFrom($options['fromEmail'],$options['fromName']);
+		// }
+
+		// Always send FROM the authenticated email address so mail servers accept it
+		$fromAddress = !empty($config['username']) ? $config['username'] : $options['fromEmail'];
+		$fromName = !empty($options['fromName']) ? $options['fromName'] : 'Nosmay HR';
+		$mail->setFrom($fromAddress, $fromName);
+
+
 		
 	    $mail->Subject = $options['subject'];
 	    $mail->msgHTML($htmlcontentdata);
@@ -232,11 +239,19 @@ public static function _checkMail($options = array()) {
 		if(array_key_exists('cc', $options))
 			$mail->addCc($options['cc']);
        
+		// if(!$mail->Send()) {
+		// 	return false;
+	    // } else { 
+	    //    return true;
+	    // }
+		
 		if(!$mail->Send()) {
-			return false;
+			error_log("SENTRIFUGO SMTP FAILED: " . $mail->ErrorInfo);
+			return $mail->ErrorInfo; // Return the exact error reason!
 	    } else { 
 	       return true;
 	    }
+
 	}
 	//End of send_php_mail()
 }

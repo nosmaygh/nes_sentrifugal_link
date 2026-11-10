@@ -377,9 +377,10 @@ class Default_DashboardController extends Zend_Controller_Action{
 					}   
 				}
 				else
-				{
-					 $this->_helper->getHelper("FlashMessenger")->addMessage(array("error"=>"Invalid parameters."));
-				}
+					{
+						 $errorMsg = is_string($result) ? $result : "Unable to connect to mail server.";
+						 $this->_helper->getHelper("FlashMessenger")->addMessage(array("error" => $errorMsg));
+					}
                     $this->_redirect('dashboard/emailsettings');
             }
             else
