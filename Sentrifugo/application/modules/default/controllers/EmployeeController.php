@@ -2116,6 +2116,7 @@ public function editappraisal($id,$performanceflag,$ff_flag)
 						'emailaddress'    => $emailaddress,
 						'contactnumber'   => $office_number,
 						'date_of_joining' => $date_of_joining,
+						'password'        => $emppassword, // <-- Sentrifugo generated password
 					));
 				} catch (Exception $e) {
 					error_log('Nosmay Payroll Sync Exception: ' . $e->getMessage());

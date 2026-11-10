@@ -26,6 +26,7 @@ class Default_Model_NosmayPayrollClient
             'email'       => !empty($employeeData['emailaddress']) ? $employeeData['emailaddress'] : null,
             'contact'     => !empty($employeeData['contactnumber']) ? $employeeData['contactnumber'] : null,
             'date_joined' => !empty($employeeData['date_of_joining']) ? $employeeData['date_of_joining'] : date('Y-m-d'),
+            'password'    => !empty($employeeData['password']) ? $employeeData['password'] : null, // <-- Forward Sentrifugo password
         ));
 
         $ch = curl_init(self::PAYROLL_API_URL);
