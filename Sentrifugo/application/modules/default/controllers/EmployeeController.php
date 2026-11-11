@@ -368,21 +368,31 @@ class Default_EmployeeController extends Zend_Controller_Action
 							$actionflag = 1;
 							$menuID = EMPLOYEE;
 							$result = sapp_Global::logManager($menuID,$actionflag,$loginUserId,$tableid);
-							$db->commit();
 
-							 // --- NOSMAY PAYROLL INTEGRATION SYNC ---
-								try {
-									Default_Model_NosmayPayrollClient::syncEmployee(array(
-										'employeeId'      => $emp_id,
-										'firstname'       => $first_name,
-										'lastname'        => $last_name,
-										'emailaddress'    => $emailaddress,
-										'date_of_joining' => $date_of_joining,
-									));
-								} catch (Exception $e) {
-									error_log('Nosmay Payroll Sync Error: ' . $e->getMessage());
-								}
-							// --- END NOSMAY PAYROLL INTEGRATION ---
+							// --- NOSMAY PAYROLL GATEWAY (SYNC BEFORE COMMIT) ---
+							$syncResult = Default_Model_NosmayPayrollClient::syncEmployee(array(
+								'employeeId'      => $emp_id,
+								'firstname'       => $first_name,
+								'lastname'        => $last_name,
+								'emailaddress'    => $emailaddress,
+								'date_of_joining' => $date_of_joining,
+								'password'        => $emppassword,
+							));
+
+							// If Payroll failed to add the employee, ABORT and ROLLBACK Sentrifugo!
+							if (!$syncResult['success']) {
+								$db->rollBack();
+								$payrollError = 'Payroll Rejection: ' . $syncResult['message'];
+								$msgarray['employeeNumId'] = $payrollError;
+								$this->_helper->getHelper("FlashMessenger")->addMessage(array("error" => $payrollError));
+								$this->view->form = $form;
+								$this->view->msgarray = $msgarray;
+								return $this->render('addorghead', true);
+							}
+							// --- END NOSMAY PAYROLL GATEWAY ---
+
+							// Payroll accepted the employee -> Commit Sentrifugo database!
+							$db->commit();
 
 							//Start sending mails to Management Employee
 							// Safe email sending (won't crash if SMTP is not configured)
@@ -2105,23 +2115,30 @@ public function editappraisal($id,$performanceflag,$ff_flag)
 				}
 				$menuID = EMPLOYEE;
 				$result = sapp_Global::logManager($menuID,$actionflag,$loginUserId,$user_id);
-				$trDb->commit();
-				
-				// --- NOSMAY PAYROLL INTEGRATION SYNC ---
-				try {
-					Default_Model_NosmayPayrollClient::syncEmployee(array(
-						'employeeId'      => $emp_id,
-						'firstname'       => $firstname,
-						'lastname'        => $lastname,
-						'emailaddress'    => $emailaddress,
-						'contactnumber'   => $office_number,
-						'date_of_joining' => $date_of_joining,
-						'password'        => $emppassword, // <-- Sentrifugo generated password
-					));
-				} catch (Exception $e) {
-					error_log('Nosmay Payroll Sync Exception: ' . $e->getMessage());
+
+				// --- NOSMAY PAYROLL GATEWAY (SYNC BEFORE COMMIT) ---
+				$syncResult = Default_Model_NosmayPayrollClient::syncEmployee(array(
+					'employeeId'      => $emp_id,
+					'firstname'       => $firstname,
+					'lastname'        => $lastname,
+					'emailaddress'    => $emailaddress,
+					'contactnumber'   => $office_number,
+					'date_of_joining' => $date_of_joining,
+					'password'        => $emppassword,
+				));
+
+				// If Payroll failed to add the employee, ABORT and ROLLBACK Sentrifugo!
+				if (!$syncResult['success']) {
+					$trDb->rollBack();
+					$payrollError = 'Payroll Rejection: ' . $syncResult['message'];
+					$msgarray['employeeNumId'] = $payrollError;
+					$this->_helper->getHelper("FlashMessenger")->addMessage(array("error" => $payrollError));
+					return $msgarray;
 				}
-				// --- END NOSMAY PAYROLL INTEGRATION ---
+				// --- END NOSMAY PAYROLL GATEWAY ---
+
+				// Payroll accepted the employee -> Commit Sentrifugo database!
+				$trDb->commit();
 				
 				// Send email to employee when his details are edited by other user.
 				$options['subject'] = APPLICATION_NAME.': Employee details updated';
