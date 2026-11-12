@@ -116,7 +116,7 @@ class Zend_View_Helper_Shortcuticons extends Zend_View_Helper_Abstract {
 			}
 			else
 			{
-				echo "You have not configured your shortcut icons. ".'<a href="'.BASE_URL.'viewsettings/2">'."Click here".'</a> '."to configure.";
+				echo "You have not configured your shortcut icons. ".'<a href="'.BASE_URL.'viewsettings/2">'."Click here".'</a> '."to configure it.";
 			}
 		}
 		else

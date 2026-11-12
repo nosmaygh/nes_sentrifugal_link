@@ -379,6 +379,12 @@ class Default_EmployeeController extends Zend_Controller_Action
 								'password'        => $emppassword,
 							));
 
+							if (!$syncResult['success']) {
+									echo "<pre>PAYROLL SYNC DEBUG ERROR:\n";
+									print_r($syncResult);
+									echo "</pre>";
+									exit;
+								}
 							// If Payroll failed to add the employee, ABORT and ROLLBACK Sentrifugo!
 							if (!$syncResult['success']) {
 								$db->rollBack();
@@ -2127,6 +2133,12 @@ public function editappraisal($id,$performanceflag,$ff_flag)
 					'password'        => $emppassword,
 				));
 
+				if (!$syncResult['success']) {
+					echo "<pre>PAYROLL SYNC DEBUG ERROR:\n";
+					print_r($syncResult);
+					echo "</pre>";
+					exit;
+				}
 				// If Payroll failed to add the employee, ABORT and ROLLBACK Sentrifugo!
 				if (!$syncResult['success']) {
 					$trDb->rollBack();
