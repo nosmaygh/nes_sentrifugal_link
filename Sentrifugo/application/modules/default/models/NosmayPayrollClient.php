@@ -2,7 +2,8 @@
 
 class Default_Model_NosmayPayrollClient
 {
-    const PAYROLL_API_URL = 'http://host.docker.internal:8000/api/v1/sync/employee';
+    //const PAYROLL_API_URL = 'http://host.docker.internal:8000/api/v1/sync/employee';
+    const PAYROLL_API_URL = 'https://payroll.nosmay.biz/api/v1/sync/employee';
     const API_KEY = 'nosmay_sentrifugo_secure_sync_secret_key_2026';
 
     /**
@@ -47,7 +48,7 @@ class Default_Model_NosmayPayrollClient
             'X-Sentrifugo-Key: ' . self::API_KEY,
             'Accept: application/json'
         ));
-        curl_setopt($ch, CURLOPT_TIMEOUT, 8);
+        curl_setopt($ch, CURLOPT_TIMEOUT, 60);
         curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, true);
 
         $response = curl_exec($ch);
