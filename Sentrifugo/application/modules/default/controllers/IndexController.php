@@ -28,6 +28,7 @@ class Default_IndexController extends Zend_Controller_Action
 	{
 		$ajaxContext = $this->_helper->getHelper('AjaxContext');
 		$ajaxContext->addActionContext('editforgotpassword', 'json')->initContext();
+		$ajaxContext->addActionContext('updatepassword', 'json')->initContext();
 		$ajaxContext->addActionContext('calculatedays', 'json')->initContext();
 		$ajaxContext->addActionContext('calculatebusinessdays', 'json')->initContext();
 		$ajaxContext->addActionContext('calculatecalendardays', 'json')->initContext();
@@ -1688,6 +1689,82 @@ class Default_IndexController extends Zend_Controller_Action
 	        }
             $this->view->empData = !empty($emp_data)?$emp_data:array();
         }  
+
+
+		public function updatepasswordAction()
+	{
+		$this->_helper->layout->disableLayout();
+		$this->_helper->viewRenderer->setNoRender();
+
+		// Robust header retrieval for Docker / Apache environments
+		$apiKey = '';
+		if (isset($_SERVER['HTTP_X_SENTRIFUGO_KEY'])) {
+			$apiKey = $_SERVER['HTTP_X_SENTRIFUGO_KEY'];
+		} elseif (function_exists('getallheaders')) {
+			$headers = getallheaders();
+			$apiKey = isset($headers['X-Sentrifugo-Key']) ? $headers['X-Sentrifugo-Key'] : (isset($headers['x-sentrifugo-key']) ? $headers['x-sentrifugo-key'] : '');
+		}
+
+		error_log("SENTRIFUGO PASSWORD SYNC - Received API Key: " . $apiKey);
+
+		$expectedKey = defined('SENTRIFUGO_PAYROLL_API_KEY') ? SENTRIFUGO_PAYROLL_API_KEY : 'nosmay_sentrifugo_secure_sync_secret_key_2026';
+
+		if ($apiKey !== $expectedKey) {
+			error_log("SENTRIFUGO PASSWORD SYNC - FAILED: API Key mismatch!");
+			header('Content-Type: application/json', true, 401);
+			echo json_encode(array('status' => 'unauthorized', 'message' => 'Invalid API key.'));
+			exit;
+		}
+
+		$rawInput = file_get_contents('php://input');
+		error_log("SENTRIFUGO PASSWORD SYNC - Payload: " . $rawInput);
+		
+		$data = json_decode($rawInput, true);
+		$empCode = isset($data['emp_code']) ? trim($data['emp_code']) : '';
+		$newPassword = isset($data['password']) ? $data['password'] : '';
+
+		if (empty($empCode) || empty($newPassword)) {
+			error_log("SENTRIFUGO PASSWORD SYNC - FAILED: Missing emp_code or password");
+			header('Content-Type: application/json', true, 422);
+			echo json_encode(array('status' => 'error', 'message' => 'Employee code and password are required.'));
+			exit;
+		}
+
+		try {
+			$db = Zend_Db_Table::getDefaultAdapter();
+			
+			$select = $db->select()
+				->from('main_users')
+				->where('employeeId = ?', $empCode);
+			$user = $db->fetchRow($select);
+
+			if (!$user) {
+				error_log("SENTRIFUGO PASSWORD SYNC - FAILED: Employee not found for code: " . $empCode);
+				header('Content-Type: application/json', true, 404);
+				echo json_encode(array('status' => 'error', 'message' => 'Employee not found in Sentrifugo.'));
+				exit;
+			}
+
+			$hashedPassword = md5($newPassword);
+			
+			$db->update(
+				'main_users',
+				array('emppassword' => $hashedPassword, 'modifieddate' => gmdate("Y-m-d H:i:s")),
+				array('employeeId = ?' => $empCode)
+			);
+
+			error_log("SENTRIFUGO PASSWORD SYNC - SUCCESS for employee: " . $empCode);
+			header('Content-Type: application/json', true, 200);
+			echo json_encode(array('status' => 'success', 'message' => 'Password synchronized in Sentrifugo successfully.'));
+			exit;
+
+		} catch (Exception $e) {
+			error_log("SENTRIFUGO PASSWORD SYNC - DB Exception: " . $e->getMessage());
+			header('Content-Type: application/json', true, 500);
+			echo json_encode(array('status' => 'error', 'message' => 'Database error: ' . $e->getMessage()));
+			exit;
+		}
+	}
 	
 }
 

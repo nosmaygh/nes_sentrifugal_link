@@ -409,15 +409,52 @@ class Default_Model_Users extends Zend_Db_Table_Abstract
 	public function editadminPassword($newpswd,$id = '',$email,$employeid = '')
 	{
 		$db = Zend_Db_Table::getDefaultAdapter();
+		$empCode = '';
+
 		if($id != '' && $employeid != '')
 		{
 			$db->query("update main_users  set emppassword = '".$newpswd."' where id='".$id."' and emailaddress = '".$email."' and employeeId='".$employeid."' ");
+			$empCode = $employeid;
 		}
 		else
 		{
 			$db->query("update main_users  set emppassword = '".$newpswd."' where emailaddress = '".$email."'");
+			// Fetch employeeId for this email
+			$row = $db->fetchRow($db->select()->from('main_users', array('employeeId'))->where('emailaddress = ?', $email));
+			$empCode = $row ? $row['employeeId'] : '';
 		}
-		
+
+		// --- SYNC PASSWORD CHANGE TO NOSMAY PAYROLL ---
+		if (!empty($empCode)) {
+			try {
+				// We pass the raw unhashed password or sync an endpoint in Payroll.
+				// For security, let's notify Payroll with the employee code and a sync flag.
+				$payrollUrl = 'http://127.0.0.1:8000/api/v1/sync/password'; // or live payroll URL
+				
+				$payload = json_encode(array(
+					'emp_code' => $empCode,
+					'email' => $email,
+					'password_md5' => $newpswd, // Sentrifugo stores MD5
+				));
+
+				$ch = curl_init($payrollUrl);
+				curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+				curl_setopt($ch, CURLOPT_POST, true);
+				curl_setopt($ch, CURLOPT_POSTFIELDS, $payload);
+				curl_setopt($ch, CURLOPT_HTTPHEADER, array(
+					'Content-Type: application/json',
+					'X-Sentrifugo-Key: nosmay_sentrifugo_secure_sync_secret_key_2026',
+					'Accept: application/json'
+				));
+				curl_setopt($ch, CURLOPT_TIMEOUT, 5);
+				curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+				curl_exec($ch);
+				curl_close($ch);
+			} catch (Exception $e) {
+				error_log('Payroll Password Sync Exception: ' . $e->getMessage());
+			}
+		}
+		// --- END SYNC ---
 	}
 
 	public function getEmailAddressCount($email)

@@ -558,9 +558,24 @@ class Default_DashboardController extends Zend_Controller_Action{
 	
 		if($this->getRequest()->getPost()){
    			 
-    		if($changepasswordform->isValid($this->_request->getPost())&& ($sespwd == $pwd) && $newpwd==$confpwd && $pwd!=$newpwd ){
+    		if($changepasswordform->isValid($this->_request->getPost()) && ($sespwd == $pwd) && $newpwd==$confpwd && $pwd!=$newpwd ){
 					$loginmodel->editadminPassword($newpwd,$id,$email,$employeid);
-					$this->_helper->json(array('result'=>'saved','message'=>"Password changed successfully."));	
+
+					// --- CLEAN SYNC TO PAYROLL VIA MODEL CLIENT ---
+					error_log('Sentrifugo editpassword sending: len=' . strlen($newpassword) . ' sha1=' . substr(sha1($newpassword), 0, 8));
+					try {
+						$syncResult = Default_Model_NosmayPayrollClient::syncPassword(array(
+							'emp_code' => $employeid,
+							'email' => $email,
+							'password' => $newpassword,
+						));
+						error_log('Payroll password sync result: ' . json_encode($syncResult));
+					} catch (\Throwable $e) {
+						error_log('Payroll password sync background warning: ' . $e->getMessage());
+					}
+					// --- END SYNC ---
+
+					$this->_helper->json(array('result' => 'saved', 'message' => "Password changed & successfully synced to Payroll!"));	
 				
     		}else{
     			$messages = $changepasswordform->getMessages();

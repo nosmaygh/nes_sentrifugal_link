@@ -2,21 +2,28 @@
 
 class Default_Model_NosmayPayrollClient
 {
-    //const PAYROLL_API_URL = 'http://host.docker.internal:8000/api/v1/sync/employee';
-    const PAYROLL_API_URL = 'https://payroll.nosmay.biz/api/v1/sync/employee';
-    const API_KEY = 'nosmay_sentrifugo_secure_sync_secret_key_2026';
+    public static function getOptions()
+    {
+        $front = Zend_Controller_Front::getInstance();
+        if ($front && $front->getParam('bootstrap')) {
+            $options = $front->getParam('bootstrap')->getOptions();
+            return isset($options['payroll']) ? $options['payroll'] : array();
+        }
+        return array();
+    }
 
-    /**
-     * Send employee details to Nosmay Payroll
-     *
-     * @param array $employeeData
-     * @return array [
-     *    'success' => bool,
-     *    'status'  => string,
-     *    'message' => string,
-     *    'data'    => array|null
-     * ]
-     */
+    public static function getApiUrl()
+    {
+        $opts = self::getOptions();
+        return !empty($opts['api']['url']) ? $opts['api']['url'] : 'http://host.docker.internal:8000/api/v1/sync/employee';
+    }
+
+    public static function getApiKey()
+    {
+        $opts = self::getOptions();
+        return !empty($opts['api']['key']) ? $opts['api']['key'] : 'nosmay_sentrifugo_secure_sync_secret_key_2026';
+    }
+
     public static function syncEmployee(array $employeeData)
     {
         $empCode = !empty($employeeData['employeeId']) ? $employeeData['employeeId'] : '';
@@ -39,26 +46,24 @@ class Default_Model_NosmayPayrollClient
             'password'    => !empty($employeeData['password']) ? $employeeData['password'] : null,
         ));
 
-        $ch = curl_init(self::PAYROLL_API_URL);
+        $ch = curl_init(self::getApiUrl());
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
         curl_setopt($ch, CURLOPT_POST, true);
         curl_setopt($ch, CURLOPT_POSTFIELDS, $payload);
         curl_setopt($ch, CURLOPT_HTTPHEADER, array(
             'Content-Type: application/json',
-            'X-Sentrifugo-Key: ' . self::API_KEY,
+            'X-Sentrifugo-Key: ' . self::getApiKey(),
             'Accept: application/json'
         ));
         curl_setopt($ch, CURLOPT_TIMEOUT, 60);
-        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, true);
+        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false); // For local testing
 
         $response = curl_exec($ch);
         $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
         $curlError = curl_error($ch);
         curl_close($ch);
 
-        // 1. Check for Network / Connectivity Errors
         if ($curlError) {
-            error_log('Nosmay Payroll Network Error: ' . $curlError);
             return array(
                 'success' => false,
                 'status'  => 'network_error',
@@ -68,7 +73,6 @@ class Default_Model_NosmayPayrollClient
 
         $decoded = json_decode($response, true);
 
-        // 2. Check for Successful HTTP Status (200 OK or 201 Created)
         if ($httpCode >= 200 && $httpCode < 300) {
             return array(
                 'success' => true,
@@ -78,27 +82,10 @@ class Default_Model_NosmayPayrollClient
             );
         }
 
-        // 3. Extract Detailed Failure Message from Payroll Response
         $failureReason = 'Payroll server error (HTTP ' . $httpCode . ')';
-
-        if (is_array($decoded)) {
-            if (!empty($decoded['message'])) {
-                $failureReason = $decoded['message'];
-            }
-            // Flatten Laravel validation errors if present (e.g. "The emp_code has already been taken")
-            if (!empty($decoded['errors']) && is_array($decoded['errors'])) {
-                $validationMessages = array();
-                foreach ($decoded['errors'] as $field => $errors) {
-                    $validationMessages[] = is_array($errors) ? implode(', ', $errors) : $errors;
-                }
-                $failureReason .= ' [' . implode('; ', $validationMessages) . ']';
-            }
-        } elseif (!empty($response)) {
-            // Raw HTML or string error from server
-            $failureReason = substr(strip_tags($response), 0, 200);
+        if (is_array($decoded) && !empty($decoded['message'])) {
+            $failureReason = $decoded['message'];
         }
-
-        error_log('Nosmay Payroll Sync Rejected: ' . $failureReason);
 
         return array(
             'success'   => false,
@@ -106,5 +93,55 @@ class Default_Model_NosmayPayrollClient
             'http_code' => $httpCode,
             'message'   => $failureReason
         );
+    }
+
+    public static function syncPassword(array $passwordData)
+    {
+        $empCode = !empty($passwordData['emp_code']) ? $passwordData['emp_code'] : '';
+
+        if (empty($empCode)) {
+            return array(
+                'success' => false,
+                'status'  => 'error',
+                'message' => 'Employee code is empty.'
+            );
+        }
+
+        $payload = json_encode(array(
+            'emp_code' => $empCode,
+            'email'    => !empty($passwordData['email']) ? $passwordData['email'] : null,
+            'password' => !empty($passwordData['password']) ? $passwordData['password'] : null,
+        ));
+
+        // Dynamically uses the exact same base URL and API key as employee sync
+        $passwordUrl = str_replace('sync/employee', 'sync/password', self::getApiUrl());
+
+        $ch = curl_init($passwordUrl);
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($ch, CURLOPT_POST, true);
+        curl_setopt($ch, CURLOPT_POSTFIELDS, $payload);
+        curl_setopt($ch, CURLOPT_HTTPHEADER, array(
+            'Content-Type: application/json',
+            'X-Sentrifugo-Key: ' . self::getApiKey(),
+            'Accept: application/json'
+        ));
+        curl_setopt($ch, CURLOPT_TIMEOUT, 10);
+        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+
+        $response = curl_exec($ch);
+        $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        $curlError = curl_error($ch);
+        curl_close($ch);
+
+        if ($curlError) {
+            return array('success' => false, 'message' => 'cURL Error: ' . $curlError);
+        }
+
+        $decoded = json_decode($response, true);
+        if ($httpCode >= 200 && $httpCode < 300) {
+            return array('success' => true, 'message' => 'Password synced successfully.');
+        }
+
+        return array('success' => false, 'message' => isset($decoded['message']) ? $decoded['message'] : 'HTTP Error ' . $httpCode);
     }
 }
