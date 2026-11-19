@@ -371,14 +371,8 @@ class Default_EmployeeController extends Zend_Controller_Action
 
 
 							// --- NOSMAY PAYROLL GATEWAY (SYNC BEFORE COMMIT) ---
-							$syncResult = Default_Model_NosmayPayrollClient::syncEmployee(array(
-								'employeeId'      => $emp_id,
-								'firstname'       => $first_name, 
-								'lastname'        => $last_name,  
-								'emailaddress'    => $emailaddress,
-								'date_joined'     => $date_of_joining,
-								'password'        => $emppassword,
-							));
+							
+							$syncResult = Default_Model_NosmayPayrollClient::syncEmployeeByUserId($user_id, $emppassword);
 
 							if (!$syncResult['success']) {
 								$db->rollBack();
@@ -735,6 +729,9 @@ class Default_EmployeeController extends Zend_Controller_Action
 						$menuID = EMPLOYEE;
 						$result = sapp_Global::logManager($menuID,$actionflag,$loginUserId,$tableid);
 						$db->commit();
+						if ($selectedtab != 1 && !empty($user_id)) {
+							Default_Model_NosmayPayrollClient::syncEmployeeByUserId($user_id, $emppassword);
+						}
 						//start of mailing to send username and password for new employee
 						if($selectedtab == 2)
 						{
@@ -2116,15 +2113,10 @@ public function editappraisal($id,$performanceflag,$ff_flag)
 				$result = sapp_Global::logManager($menuID,$actionflag,$loginUserId,$user_id);
 
 				// --- NOSMAY PAYROLL GATEWAY (SYNC BEFORE COMMIT) ---
-				$syncResult = Default_Model_NosmayPayrollClient::syncEmployee(array(
-					'employeeId'      => $emp_id,
-					'firstname'       => $firstname, // (or $first_name in addorghead)
-					'lastname'        => $lastname,  // (or $last_name in addorghead)
-					'emailaddress'    => $emailaddress,
-					'contactnumber'   => $office_number,
-					'date_joined'     => $date_of_joining,
-					'password'        => $emppassword,
-				));
+				$syncResult = Default_Model_NosmayPayrollClient::syncEmployeeByUserId(
+					$user_id,
+					($id == '') ? $emppassword : null
+				);
 
 				if (!$syncResult['success']) {
 					// Roll back database changes so no orphan/duplicate record is saved in Sentrifugo
@@ -2362,6 +2354,7 @@ public function editappraisal($id,$performanceflag,$ff_flag)
 			{
 				$menuID = EMPLOYEE;
 				$result = sapp_Global::logManager($menuID,$actionflag,$loginUserId,$id);
+				Default_Model_NosmayPayrollClient::syncEmployeeByUserId($id);
 				$messages['message'] = 'Employee deleted successfully.';
 				$messages['msgtype'] = 'success';
 			}
@@ -2507,6 +2500,7 @@ public function editappraisal($id,$performanceflag,$ff_flag)
 				$id = $logmanagermodel->addOrUpdateLogManager($menuID,4,$jsonlogarr,$loginUserId,$emp_id);
 				
 				$db->commit();
+				Default_Model_NosmayPayrollClient::syncEmployeeByUserId($emp_id);
 				$result = 'update';
 			}
 			catch(Exception $e)
@@ -2789,6 +2783,7 @@ public function editappraisal($id,$performanceflag,$ff_flag)
 					$emp_data['createddate'] = gmdate("Y-m-d H:i:s");;
 					$emp_data['isactive'] = 1;				
 					$employeeModal->SaveorUpdateEmployeeData($emp_data, '');
+					Default_Model_NosmayPayrollClient::syncEmployeeByUserId($user_id, $emppassword);
 					//end of saving into employee table.
 					$tableid = $user_id;
 					$actionflag = 1;

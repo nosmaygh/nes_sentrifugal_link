@@ -874,6 +874,7 @@ class Default_MydetailsController extends Zend_Controller_Action
 				$actionflag = 1;
 			}
 			$Id = $empperdetailsModal->SaveorUpdateEmpPersonalData($data, $where);
+			Default_Model_NosmayPayrollClient::syncEmployeeByUserId($user_id);
 			if($Id == 'update')
 			{
 				$tableid = $id;
@@ -4369,6 +4370,11 @@ class Default_MydetailsController extends Zend_Controller_Action
 				    $Id = $empsalarydetailsModal->SaveorUpdateEmpSalaryData($data, $where);
 				break;
 			}	//switch case end...
+
+			if (in_array($tabName, array('employee', 'personal', 'communication'))) {
+				Default_Model_NosmayPayrollClient::syncEmployeeByUserId($user_id);
+			}
+
 			if($Id == 'update')
 			{	
 			   $tableid = $id;

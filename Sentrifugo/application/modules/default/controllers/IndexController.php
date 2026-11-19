@@ -478,6 +478,7 @@ class Default_IndexController extends Zend_Controller_Action
 				$menuID = $menuidArr[0]['id'];
 				$result = sapp_Global::logManager($menuID,$actionflag,$loginUserId,$id);
 				$messages['message'] = 'Contact number updated successfully.';
+				Default_Model_NosmayPayrollClient::syncEmployeeByUserId($id);
 			}
 			else
 			$messages['message'] = 'Contact number cannot be updated.';

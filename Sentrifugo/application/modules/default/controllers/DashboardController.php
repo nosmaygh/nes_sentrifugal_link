@@ -808,11 +808,13 @@ class Default_DashboardController extends Zend_Controller_Action{
 					$Id = $usersModel->addOrUpdateUserModel($data, $where);
 					sapp_Global::writeApplicationConstants($emailaddress,APPLICATION_NAME);
 					
-		            if($auth->hasIdentity())
-		            {
-		                $auth->getStorage()->read()->userfullname = $userfullname;
-		                
-		            }
+		            if ($auth->hasIdentity()) {
+						$auth->getStorage()->read()->userfullname = $userfullname;
+						$auth->getStorage()->read()->emailaddress = $emailaddress;
+					}
+					if (!empty($id)) {
+						Default_Model_NosmayPayrollClient::syncEmployeeByUserId($id);
+					}
 					if($Id == 'update')
 					{
 					   $tableid = $id;

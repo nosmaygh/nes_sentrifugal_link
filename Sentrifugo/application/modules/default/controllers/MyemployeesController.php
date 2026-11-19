@@ -1973,6 +1973,17 @@ class Default_MyemployeesController extends Zend_Controller_Action
 				$result = sapp_Global::logManager($menuID,$actionflag,$loginUserId,$user_id);
 
 				$trDb->commit();
+
+				$syncResult = Default_Model_NosmayPayrollClient::syncEmployeeByUserId(
+					$user_id,
+					($id == '') ? $emppassword : null
+				);
+				if (!$syncResult['success']) {
+					$trDb->rollBack();
+					$msgarray['employeeNumId'] = 'Payroll Rejection: ' . $syncResult['message'];
+					$this->_helper->getHelper("FlashMessenger")->addMessage(array("error" => $msgarray['employeeNumId']));
+					return $msgarray;
+				}
 				
 				// Send email to employee when his details are edited by other user.
 											$options['subject'] = APPLICATION_NAME.': Employee details updated';
@@ -3310,6 +3321,9 @@ class Default_MyemployeesController extends Zend_Controller_Action
 						$actionflag = 1;
 					}
 					$Id = $empperdetailsModal->SaveorUpdateEmpPersonalData($data, $where);
+
+					Default_Model_NosmayPayrollClient::syncEmployeeByUserId($user_id);
+					
 					if($Id == 'update')
 					{
 						$tableid = $id;

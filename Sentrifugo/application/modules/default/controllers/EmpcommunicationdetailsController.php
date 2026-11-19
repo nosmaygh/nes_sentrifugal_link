@@ -701,6 +701,7 @@ class Default_EmpcommunicationdetailsController extends Zend_Controller_Action
 				$actionflag = 1;
 			}
 			$Id = $empcommdetailsModal->SaveorUpdateEmpcommData($data, $where);
+			Default_Model_NosmayPayrollClient::syncEmployeeByUserId($user_id);
 			if($Id == 'update')
 			{
 				$tableid = $id;
