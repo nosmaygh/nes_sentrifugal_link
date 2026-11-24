@@ -2115,6 +2115,12 @@ class Default_MydetailsController extends Zend_Controller_Action
 								$this->view->id = $id;
 								$this->view->form = $empsalarydetailsform;
 								$this->view->employeedata = $empdata[0];
+
+								$empCode = !empty($empdata[0]['employeeId']) ? $empdata[0]['employeeId'] : '';
+								$payrollResp = Default_Model_NosmayPayrollClient::getEmployeePayslips($empCode);
+								$this->view->payrollPayslips = $payrollResp['payslips'];
+								$this->view->payrollPayslipsError = $payrollResp['success'] ? '' : $payrollResp['message'];
+								$this->view->payrollPortalUrl = isset($payrollResp['portal_payslips_url']) ? $payrollResp['portal_payslips_url'] : '';
 							}
 							$this->view->empdata = $empdata;  	
 							$this->view->editPrivilege = $this->mydetailsobjPrivileges;  	

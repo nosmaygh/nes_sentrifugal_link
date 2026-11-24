@@ -401,6 +401,7 @@ class Default_ManageremployeevacationsController extends Zend_Controller_Action
 							$actionflag = 1;
 						}
 						$Id = $leaverequestmodel->SaveorUpdateLeaveRequest($data, $where);
+						Default_Model_NosmayPayrollClient::syncLeaveRequestById($id);
 						    if($Id == 'update')
 							{
 							   $tableid = $id;

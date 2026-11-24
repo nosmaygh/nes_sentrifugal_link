@@ -760,6 +760,7 @@ class Default_LeaverequestController extends Zend_Controller_Action
                                 $result = sapp_Global::_sendEmail($options);	
 							
 					} 
+					Default_Model_NosmayPayrollClient::syncLeaveRequestById($tableid);
 					$menuID = LEAVEREQUEST;
 					$result = sapp_Global::logManager($menuID,$actionflag,$loginUserId,$tableid);
                     $this->_helper->json(array('result'=>'saved',
@@ -1091,6 +1092,7 @@ class Default_LeaverequestController extends Zend_Controller_Action
 						);
 					$where = array('id=?'=>$id);
 					$Id = $leaverequestmodel->SaveorUpdateLeaveRequest($data, $where);
+					Default_Model_NosmayPayrollClient::syncLeaveRequestById($id);
 					
 					
 					/** 

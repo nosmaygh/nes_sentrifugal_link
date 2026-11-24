@@ -208,7 +208,8 @@ class Default_EmployeeleavetypesController extends Zend_Controller_Action
 				                  'numberofdays'=>$numberofdays, 
 				                  'leavecode'=>trim($leavecode),
 								  'leavepreallocated'=>trim($leavepreallocated),
-                                  'leavepredeductable'=>trim($leavepredeductable),								  
+                                  'leavepredeductable'=>trim($leavepredeductable),	
+								  'is_paid' => (int) $this->_request->getParam('is_paid', 1),							  
 				      			 'description'=>trim($description),
 								  'modifiedby'=>$loginUserId,
 								'modifieddate'=>gmdate("Y-m-d H:i:s")
@@ -236,6 +237,7 @@ class Default_EmployeeleavetypesController extends Zend_Controller_Action
                        $tableid = $Id; 	
                         $this->_helper->getHelper("FlashMessenger")->addMessage("Leave type added successfully.");					   
 					}   
+					Default_Model_NosmayPayrollClient::syncLeaveTypeById($tableid);
 					$menuID = EMPLOYEELEAVETYPES;
 					$result = sapp_Global::logManager($menuID,$actionflag,$loginUserId,$tableid);
     			    $this->_redirect('employeeleavetypes');		
@@ -281,6 +283,7 @@ class Default_EmployeeleavetypesController extends Zend_Controller_Action
 				   $result = sapp_Global::logManager($menuID,$actionflag,$loginUserId,$id); 
 				   $messages['message'] = 'Leave type deleted successfully.';
 				    $messages['msgtype'] = 'success';	
+					Default_Model_NosmayPayrollClient::syncLeaveTypeById($id);
 				}   
 				else
                 {

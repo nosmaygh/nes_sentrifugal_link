@@ -280,6 +280,7 @@ class Default_PendingleavesController extends Zend_Controller_Action
 			  $where = array('id=?'=>$id);
 			   
 			  $Id = $leaverequestmodel->SaveorUpdateLeaveRequest($dataarr, $where);
+			  Default_Model_NosmayPayrollClient::syncLeaveRequestById($id);
 			 if($data['leavestatus']=='Approved') {
 			  if(!empty($leavetypeArr)) {
 					if($leavetypeArr[0]['leavepredeductable'] == 1) {		

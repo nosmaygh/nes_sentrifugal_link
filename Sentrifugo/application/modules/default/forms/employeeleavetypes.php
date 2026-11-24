@@ -105,7 +105,14 @@ class Default_Form_employeeleavetypes extends Zend_Form
 		$leavepredeductable->setMultiOptions(array(							
 							'1'=>'Yes' ,
 							'2'=>'No',
-							));		
+							));
+		$isPaid = new Zend_Form_Element_Select('is_paid');
+        $isPaid->setRegisterInArrayValidator(false);
+        $isPaid->setMultiOptions(array(
+            '1' => 'Paid Leave',
+            '0' => 'Non-Paid Leave (Leave Without Pay)',
+        ));
+        $isPaid->setValue('1');		
           	
 		$description = new Zend_Form_Element_Textarea('description');
         $description->setAttrib('rows', 10);
@@ -116,7 +123,7 @@ class Default_Form_employeeleavetypes extends Zend_Form
 		$submit->setAttrib('id', 'submitbutton');
 		$submit->setLabel('Save');
 
-		 $this->addElements(array($id,$leavetype,$numberofdays,$leavecode,$leavepreallocated,$leavepredeductable,$description,$submit));
+		 $this->addElements(array($id,$leavetype,$numberofdays,$leavecode,$leavepreallocated,$leavepredeductable,$isPaid,$description,$submit));
          $this->setElementDecorators(array('ViewHelper')); 
 	}
 }

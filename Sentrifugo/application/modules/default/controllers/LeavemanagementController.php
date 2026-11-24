@@ -152,14 +152,17 @@ class Default_LeavemanagementController extends Zend_Controller_Action
 				
 			/*  if(isset($_POST['hrmanager']) && $_POST['hrmanager']!='')
 			{ */
-				if(isset($_POST['businessunit']) && $_POST['businessunit']!='')
-				{
-					$hremployees=$leavemanagementmodel->getBusinessunitHrEmployees($_POST['businessunit']);	
-					foreach ($hremployees as $employees)
-					{
+				$selectedBu = (isset($_POST['businessunit']) && $_POST['businessunit'] != '')
+					? $_POST['businessunit']
+					: '0';
+				$hremployees = $leavemanagementmodel->getBusinessunitHrEmployees($selectedBu);
+				if (!empty($hremployees)) {
+					foreach ($hremployees as $employees) {
 						$leavemanagementform->hrmanager->addMultiOption($employees['user_id'], $employees['userfullname']);
 					}
-					$leavemanagementform->setDefault('hrmanager',$_POST['hrmanager']);	
+				}
+				if (isset($_POST['hrmanager']) && $_POST['hrmanager'] != '') {
+					$leavemanagementform->setDefault('hrmanager', $_POST['hrmanager']);
 				}
 			//} 
 		

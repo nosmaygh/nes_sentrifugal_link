@@ -274,4 +274,240 @@ class Default_Model_NosmayPayrollClient
 
         return array('success' => false, 'message' => isset($decoded['message']) ? $decoded['message'] : 'HTTP Error ' . $httpCode);
     }
+
+    public static function getLeaveTypeApiUrl()
+    {
+        return str_replace('sync/employee', 'sync/leave-type', self::getApiUrl());
+    }
+
+    public static function getLeaveRequestApiUrl()
+    {
+        return str_replace('sync/employee', 'sync/leave-request', self::getApiUrl());
+    }
+
+    public static function isPaidLeaveType($title, $code = '', $isPaidFlag = null)
+    {
+        if ($isPaidFlag !== null && $isPaidFlag !== '') {
+            if ((int) $isPaidFlag === 0) {
+                return false;
+            }
+        }
+
+        $haystack = strtolower(trim($title . ' ' . $code));
+        $unpaidKeywords = array('without pay', 'unpaid', 'non-paid', 'non paid', 'no pay', 'nopay', 'lwp');
+        foreach ($unpaidKeywords as $kw) {
+            if (strpos($haystack, $kw) !== false) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    private static function postToPayroll($url, array $payloadArray)
+    {
+        $ch = curl_init($url);
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($ch, CURLOPT_POST, true);
+        curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($payloadArray));
+        curl_setopt($ch, CURLOPT_HTTPHEADER, array(
+            'Content-Type: application/json',
+            'X-Sentrifugo-Key: ' . self::getApiKey(),
+            'Accept: application/json'
+        ));
+        curl_setopt($ch, CURLOPT_TIMEOUT, 15);
+        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+
+        $response = curl_exec($ch);
+        $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        $curlError = curl_error($ch);
+        curl_close($ch);
+
+        if ($curlError) {
+            error_log('Payroll sync cURL error (' . $url . '): ' . $curlError);
+            return array('success' => false, 'message' => $curlError);
+        }
+
+        $decoded = json_decode($response, true);
+        if ($httpCode >= 200 && $httpCode < 300) {
+            return array('success' => true, 'data' => $decoded);
+        }
+
+        error_log('Payroll sync HTTP ' . $httpCode . ' (' . $url . '): ' . $response);
+        return array(
+            'success' => false,
+            'http_code' => $httpCode,
+            'message' => isset($decoded['message']) ? $decoded['message'] : 'HTTP ' . $httpCode,
+        );
+    }
+
+    public static function syncLeaveTypeById($leaveTypeId)
+    {
+        $leaveTypeId = (int) $leaveTypeId;
+        if ($leaveTypeId <= 0) {
+            return array('success' => false, 'message' => 'Invalid leave type ID.');
+        }
+
+        try {
+            $db = Zend_Db_Table::getDefaultAdapter();
+            $row = $db->fetchRow(
+                "SELECT id, leavetype, numberofdays, leavecode, is_paid, isactive
+                 FROM main_employeeleavetypes
+                 WHERE id = ?
+                 LIMIT 1",
+                array($leaveTypeId)
+            );
+
+            if (empty($row)) {
+                return array('success' => false, 'message' => 'Leave type not found.');
+            }
+
+            $isPaid = self::isPaidLeaveType(
+                (string) $row['leavetype'],
+                (string) $row['leavecode'],
+                isset($row['is_paid']) ? $row['is_paid'] : null
+            );
+
+            return self::postToPayroll(self::getLeaveTypeApiUrl(), array(
+                'sentrifugo_id'  => (int) $row['id'],
+                'leave_title'    => (string) $row['leavetype'],
+                'leave_code'     => !empty($row['leavecode']) ? (string) $row['leavecode'] : ('LT-' . $row['id']),
+                'number_of_days' => (int) $row['numberofdays'],
+                'is_paid'        => $isPaid,
+                'leave_status'   => ((int) $row['isactive'] === 1) ? 'active' : 'inactive',
+            ));
+        } catch (Exception $e) {
+            error_log('NosmayPayrollClient::syncLeaveTypeById error: ' . $e->getMessage());
+            return array('success' => false, 'message' => $e->getMessage());
+        }
+    }
+
+    public static function syncLeaveRequestById($leaveRequestId)
+    {
+        $leaveRequestId = (int) $leaveRequestId;
+        if ($leaveRequestId <= 0) {
+            return array('success' => false, 'message' => 'Invalid leave request ID.');
+        }
+
+        try {
+            $db = Zend_Db_Table::getDefaultAdapter();
+            $row = $db->fetchRow(
+                "SELECT
+                    lr.id,
+                    lr.user_id,
+                    lr.leavetypeid,
+                    lr.leaveday,
+                    lr.from_date,
+                    lr.to_date,
+                    lr.leavestatus,
+                    lr.appliedleavescount,
+                    lr.reason,
+                    lr.isactive,
+                    u.employeeId,
+                    lt.leavetype AS leave_title,
+                    lt.leavecode AS leave_code,
+                    lt.is_paid
+                 FROM main_leaverequest lr
+                 INNER JOIN main_users u ON u.id = lr.user_id
+                 LEFT JOIN main_employeeleavetypes lt ON lt.id = lr.leavetypeid
+                 WHERE lr.id = ?
+                 LIMIT 1",
+                array($leaveRequestId)
+            );
+
+            if (empty($row) || empty($row['employeeId'])) {
+                return array('success' => false, 'message' => 'Leave request or employeeId not found.');
+            }
+
+            $statusMap = array(
+                'Pending for approval' => 'pending',
+                'Approved'             => 'approved',
+                'Rejected'             => 'rejected',
+                'Cancel'               => 'cancelled',
+            );
+            $rawStatus = (string) $row['leavestatus'];
+            $normalizedStatus = isset($statusMap[$rawStatus]) ? $statusMap[$rawStatus] : 'pending';
+            if ((int) $row['isactive'] === 0) {
+                $normalizedStatus = 'cancelled';
+            }
+
+            $title = !empty($row['leave_title']) ? (string) $row['leave_title'] : 'Leave';
+            $code = !empty($row['leave_code']) ? (string) $row['leave_code'] : ('LT-' . $row['leavetypeid']);
+            $isPaid = self::isPaidLeaveType($title, $code, isset($row['is_paid']) ? $row['is_paid'] : null);
+
+            return self::postToPayroll(self::getLeaveRequestApiUrl(), array(
+                'sentrifugo_leave_request_id' => (int) $row['id'],
+                'emp_code'                    => (string) $row['employeeId'],
+                'leave_type_sentrifugo_id'    => (int) $row['leavetypeid'],
+                'leave_title'                 => $title,
+                'leave_code'                  => $code,
+                'is_paid'                     => $isPaid,
+                'from_date'                   => (string) $row['from_date'],
+                'to_date'                     => !empty($row['to_date']) ? (string) $row['to_date'] : (string) $row['from_date'],
+                'days_count'                  => (float) $row['appliedleavescount'],
+                'leave_day_type'              => ((int) $row['leaveday'] === 2) ? 'half' : 'full',
+                'sentrifugo_status'           => $normalizedStatus,
+                'reason'                      => $row['reason'],
+            ));
+        } catch (Exception $e) {
+            error_log('NosmayPayrollClient::syncLeaveRequestById error: ' . $e->getMessage());
+            return array('success' => false, 'message' => $e->getMessage());
+        }
+    }
+
+    public static function getEmployeePayslips($empCode)
+    {
+        $empCode = trim((string) $empCode);
+        if ($empCode === '') {
+            return array(
+                'success'  => false,
+                'message'  => 'Employee code is missing.',
+                'payslips' => array(),
+            );
+        }
+
+        $url = str_replace(
+            'sync/employee',
+            'employees/' . rawurlencode($empCode) . '/payslips',
+            self::getApiUrl()
+        );
+
+        $ch = curl_init($url);
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($ch, CURLOPT_HTTPHEADER, array(
+            'X-Sentrifugo-Key: ' . self::getApiKey(),
+            'Accept: application/json',
+        ));
+        curl_setopt($ch, CURLOPT_TIMEOUT, 10);
+        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+
+        $response = curl_exec($ch);
+        $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        $curlError = curl_error($ch);
+        curl_close($ch);
+
+        if ($curlError) {
+            return array(
+                'success'  => false,
+                'message'  => 'Cannot connect to Payroll server: ' . $curlError,
+                'payslips' => array(),
+            );
+        }
+
+        $decoded = json_decode($response, true);
+        if ($httpCode >= 200 && $httpCode < 300 && is_array($decoded)) {
+            return array(
+                'success'             => true,
+                'payslips'            => isset($decoded['payslips']) ? $decoded['payslips'] : array(),
+                'portal_payslips_url' => isset($decoded['portal_payslips_url']) ? $decoded['portal_payslips_url'] : null,
+                'message'             => '',
+            );
+        }
+
+        return array(
+            'success'  => false,
+            'message'  => isset($decoded['message']) ? $decoded['message'] : ('Payroll error (HTTP ' . $httpCode . ')'),
+            'payslips' => array(),
+        );
+    }
 }
