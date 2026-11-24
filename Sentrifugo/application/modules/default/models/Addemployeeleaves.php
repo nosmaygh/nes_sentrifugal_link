@@ -107,29 +107,62 @@ class Default_Model_Addemployeeleaves extends Zend_Db_Table_Abstract
 				
         return $dataTmp;
     }
-    
-	public function getMultipleEmployees($dept_id)
+
+
+    public function getMultipleEmployees($dept_id)
 	{
 		$auth = Zend_Auth::getInstance();
-		if($auth->hasIdentity()){
+		$loginUserId = '';
+		if ($auth->hasIdentity()) {
 			$loginUserId = $auth->getStorage()->read()->id;
 		}
-            if($dept_id != '' && $loginUserId!='')
-            {
-                $select = $this->select()
-                            ->setIntegrityCheck(false)
-                            ->from(array('e' => 'main_employees_summary'),array('e.id','e.user_id','e.userfullname','e.firstname','e.lastname','e.employeeId','e.department_id'))
-                            ->joinLeft(array('r'=>'main_roles'), 'e.emprole=r.id')
-                            ->joinLeft(array('el'=>'main_employeeleaves'), 'el.user_id=e.user_id',array('el.emp_leave_limit','el.used_leaves','el.alloted_year','el.createddate','el.isleavetrasnferset'))
-                            ->where('e.isactive = 1 and e.department_id in ('.$dept_id.') and e.user_id!='.$loginUserId.' and r.group_id NOT IN ('.MANAGEMENT_GROUP.','.USERS_GROUP.')')
-							->group('e.user_id')
-                            ->order('e.userfullname');
+		if ($dept_id != '' && $loginUserId != '') {
+			$deptIds = array_filter(array_map('intval', is_array($dept_id) ? $dept_id : explode(',', (string) $dept_id)));
+			if (empty($deptIds)) {
+				return array();
+			}
+			$deptIn = implode(',', $deptIds);
+			$currentYear = (int) date('Y');
 
-                return $this->fetchAll($select)->toArray();	
-            }
-            else 
-                return array();
+			$select = $this->select()
+				->setIntegrityCheck(false)
+				->from(array('e' => 'main_employees_summary'), array('e.id', 'e.user_id', 'e.userfullname', 'e.firstname', 'e.lastname', 'e.employeeId', 'e.department_id'))
+				->joinLeft(array('r' => 'main_roles'), 'e.emprole = r.id', array())
+				->joinLeft(
+					array('el' => 'main_employeeleaves'),
+					'el.user_id = e.user_id AND el.alloted_year = ' . $currentYear,
+					array('el.emp_leave_limit', 'el.used_leaves', 'el.alloted_year', 'el.createddate', 'el.isleavetrasnferset')
+				)
+				->where('e.isactive = 1 and e.department_id in (' . $deptIn . ') and e.user_id != ' . (int) $loginUserId . ' and r.group_id NOT IN (' . MANAGEMENT_GROUP . ',' . USERS_GROUP . ')')
+				->order('e.userfullname');
+
+			return $this->fetchAll($select)->toArray();
+		}
+		return array();
 	}
+    
+	// public function getMultipleEmployees($dept_id)
+	// {
+	// 	$auth = Zend_Auth::getInstance();
+	// 	if($auth->hasIdentity()){
+	// 		$loginUserId = $auth->getStorage()->read()->id;
+	// 	}
+    //         if($dept_id != '' && $loginUserId!='')
+    //         {
+    //             $select = $this->select()
+    //                         ->setIntegrityCheck(false)
+    //                         ->from(array('e' => 'main_employees_summary'),array('e.id','e.user_id','e.userfullname','e.firstname','e.lastname','e.employeeId','e.department_id'))
+    //                         ->joinLeft(array('r'=>'main_roles'), 'e.emprole=r.id')
+    //                         ->joinLeft(array('el'=>'main_employeeleaves'), 'el.user_id=e.user_id',array('el.emp_leave_limit','el.used_leaves','el.alloted_year','el.createddate','el.isleavetrasnferset'))
+    //                         ->where('e.isactive = 1 and e.department_id in ('.$dept_id.') and e.user_id!='.$loginUserId.' and r.group_id NOT IN ('.MANAGEMENT_GROUP.','.USERS_GROUP.')')
+	// 						->group('e.user_id')
+    //                         ->order('e.userfullname');
+
+    //             return $this->fetchAll($select)->toArray();	
+    //         }
+    //         else 
+    //             return array();
+	// }
 	
 }
 ?>

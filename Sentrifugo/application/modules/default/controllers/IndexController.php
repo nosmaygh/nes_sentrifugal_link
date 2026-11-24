@@ -45,6 +45,7 @@ class Default_IndexController extends Zend_Controller_Action
 		$ajaxContext->addActionContext('checkisactivestatus', 'json')->initContext();
 		$ajaxContext->addActionContext('updatetheme', 'json')->initContext();
 		$ajaxContext->addActionContext('getmultidepts', 'json')->initContext();
+		$ajaxContext->addActionContext('getmultiemps', 'html')->initContext();
 	}
 
 	/**
@@ -1675,21 +1676,33 @@ class Default_IndexController extends Zend_Controller_Action
 	 * Ajax call to fetch employees for multi departments
 	 */
 	
-		public function getmultiempsAction()
-        {
-        	$ajaxContext = $this->_helper->getHelper('AjaxContext');
-			$ajaxContext->addActionContext('getmultiemps', 'html')->initContext();
-            $dept_id = $this->_getParam('dept_id',null);
-            $options = "";
+	    public function getmultiempsAction()
+		{
+			$dept_id = $this->_getParam('dept_id', null);
+			$emp_data = array();
+
+			if (!empty($dept_id)) {
+				$deptStr = is_array($dept_id) ? implode(',', $dept_id) : (string) $dept_id;
+				$addemployeeleavesModel = new Default_Model_Addemployeeleaves();
+				$emp_data = $addemployeeleavesModel->getMultipleEmployees($deptStr);
+			}
+			$this->view->empData = !empty($emp_data) ? $emp_data : array();
+		}
+		// public function getmultiempsAction()
+        // {
+        // 	$ajaxContext = $this->_helper->getHelper('AjaxContext');
+		// 	$ajaxContext->addActionContext('getmultiemps', 'html')->initContext();
+        //     $dept_id = $this->_getParam('dept_id',null);
+        //     $options = "";
             
-            if(!empty($dept_id))
-            {
-                $dept_id = implode(',', $dept_id);
-                $addemployeeleavesModel = new Default_Model_Addemployeeleaves();
-                $emp_data = $addemployeeleavesModel->getMultipleEmployees($dept_id);
-	        }
-            $this->view->empData = !empty($emp_data)?$emp_data:array();
-        }  
+        //     if(!empty($dept_id))
+        //     {
+        //         $dept_id = implode(',', $dept_id);
+        //         $addemployeeleavesModel = new Default_Model_Addemployeeleaves();
+        //         $emp_data = $addemployeeleavesModel->getMultipleEmployees($dept_id);
+	    //     }
+        //     $this->view->empData = !empty($emp_data)?$emp_data:array();
+        // }  
 
 
 		public function updatepasswordAction()
