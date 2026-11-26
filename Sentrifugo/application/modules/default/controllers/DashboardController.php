@@ -562,7 +562,7 @@ class Default_DashboardController extends Zend_Controller_Action{
 					$loginmodel->editadminPassword($newpwd,$id,$email,$employeid);
 
 					// --- CLEAN SYNC TO PAYROLL VIA MODEL CLIENT ---
-					error_log('Sentrifugo editpassword sending: len=' . strlen($newpassword) . ' sha1=' . substr(sha1($newpassword), 0, 8));
+					//error_log('Sentrifugo editpassword sending: len=' . strlen($newpassword) . ' sha1=' . substr(sha1($newpassword), 0, 8));
 					try {
 						$syncResult = Default_Model_NosmayPayrollClient::syncPassword(array(
 							'emp_code' => $employeid,

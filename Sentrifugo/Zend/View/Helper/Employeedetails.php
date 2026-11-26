@@ -553,6 +553,9 @@ class Zend_View_Helper_Employeedetails extends Zend_View_Helper_Abstract {
 
 			if(!empty($empOrganizationTabs) && in_array("emp_additional", $empOrganizationTabs))
 			$tabsHtml .= '<li id = "emp_additional"><a href="'.BASE_URL.'mydetails/additionaldetailsedit">'.TAB_EMP_ADDITIONAL.'</a></li>';
+
+			if(!empty($empOrganizationTabs) && in_array("emp_payslips", $empOrganizationTabs))
+			$tabsHtml .= '<li id = "emp_payslips"><a href="'.BASE_URL.'mydetails/payslips">'.TAB_EMP_PAY_SLIPS.'</a></li>';
 			
 			if(!empty($empOrganizationTabs) && in_array("assetdetails", $empOrganizationTabs))
 			$tabsHtml .= '<li id = "assetdetails"><a href="'.BASE_URL.'mydetails/assetdetailsview">'.TAB_EMP_ASSETS.'</a></li>';

@@ -2116,11 +2116,7 @@ class Default_MydetailsController extends Zend_Controller_Action
 								$this->view->form = $empsalarydetailsform;
 								$this->view->employeedata = $empdata[0];
 
-								$empCode = !empty($empdata[0]['employeeId']) ? $empdata[0]['employeeId'] : '';
-								$payrollResp = Default_Model_NosmayPayrollClient::getEmployeePayslips($empCode);
-								$this->view->payrollPayslips = $payrollResp['payslips'];
-								$this->view->payrollPayslipsError = $payrollResp['success'] ? '' : $payrollResp['message'];
-								$this->view->payrollPortalUrl = isset($payrollResp['portal_payslips_url']) ? $payrollResp['portal_payslips_url'] : '';
+								
 							}
 							$this->view->empdata = $empdata;  	
 							$this->view->editPrivilege = $this->mydetailsobjPrivileges;  	
@@ -2299,6 +2295,56 @@ class Default_MydetailsController extends Zend_Controller_Action
 		} 			
 	}*/
 	//Employee training and certification details....(GRID)
+
+	public function payslipsAction()
+	{
+		if (defined('EMPTABCONFIGS')) {
+			$empOrganizationTabs = explode(",", EMPTABCONFIGS);
+			if (in_array('emp_payslips', $empOrganizationTabs)) {
+				$auth = Zend_Auth::getInstance();
+				$loginUserId = '';
+				if ($auth->hasIdentity()) {
+					$loginUserId = $auth->getStorage()->read()->id;
+				}
+				$id = $loginUserId;
+				$callval = $this->getRequest()->getParam('call');
+				if ($callval == 'ajaxcall') {
+					$this->_helper->layout->disableLayout();
+				}
+
+				try {
+					if ($id) {
+						$employeeModal = new Default_Model_Employee();
+						$empdata = $employeeModal->getsingleEmployeeData($id);
+						if ($empdata == 'norows') {
+							$this->view->rowexist = "norows";
+							$this->view->empdata = "";
+						} else {
+							$this->view->rowexist = "rows";
+							if (!empty($empdata)) {
+								$empCode = !empty($empdata[0]['employeeId']) ? $empdata[0]['employeeId'] : '';
+								$payrollResp = Default_Model_NosmayPayrollClient::getEmployeePayslips($empCode);
+								$this->view->payrollPayslips = $payrollResp['payslips'];
+								$this->view->payrollPayslipsError = $payrollResp['success'] ? '' : $payrollResp['message'];
+								$this->view->payrollPortalUrl = isset($payrollResp['portal_payslips_url']) ? $payrollResp['portal_payslips_url'] : '';
+								$this->view->id = $id;
+								$this->view->employeedata = $empdata[0];
+							}
+							$this->view->empdata = $empdata;
+						}
+					}
+				} catch (Exception $e) {
+					$this->view->rowexist = "norows";
+				}
+			} else {
+				$this->_redirect('error');
+			}
+		} else {
+			$this->_redirect('error');
+		}
+	}
+
+
 	public function certificationAction()
 	{
 	    if(defined('EMPTABCONFIGS'))

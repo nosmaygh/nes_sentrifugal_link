@@ -15,7 +15,8 @@ class Default_Model_NosmayPayrollClient
     public static function getApiUrl()
     {
         $opts = self::getOptions();
-        return !empty($opts['api']['url']) ? $opts['api']['url'] : 'http://host.docker.internal:8000/api/v1/sync/employee';
+        //return !empty($opts['api']['url']) ? $opts['api']['url'] : 'http://host.docker.internal:8000/api/v1/sync/employee';
+        return !empty($opts['api']['url']) ? $opts['api']['url'] : 'https://payroll.nosmay.biz/api/v1/sync/employee';
     }
 
     public static function getApiKey()

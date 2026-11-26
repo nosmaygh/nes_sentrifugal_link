@@ -57,78 +57,7 @@ sapp_Helper::viewFooter();
 
 
 
-<div style="margin-top:20px; clear:both;">
-    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
-        <h3 style="margin:0; font-size:15px; font-weight:600; color:#333;">Payroll Monthly Payslips</h3>
-        <?php if (!empty($this->payrollPortalUrl)) { ?>
-            <a href="<?php echo $this->escape($this->payrollPortalUrl); ?>" target="_blank" rel="noopener"
-               style="background:#2d6a4f; color:#fff; padding:6px 12px; border-radius:4px; text-decoration:none; font-size:12px;">
-                Open Payroll Portal
-            </a>
-        <?php } ?>
-    </div>
 
-    <?php if (!empty($this->payrollPayslipsError)) { ?>
-        <div class="ml-alert-1-info m1-info-set">
-            <div class="style-1-icon info"></div>
-            <?php echo $this->escape($this->payrollPayslipsError); ?>
-        </div>
-    <?php } elseif (empty($this->payrollPayslips)) { ?>
-        <div class="ml-alert-1-info m1-info-set">
-            <div class="style-1-icon info"></div>
-            No payslips have been generated in Payroll for this employee yet.
-        </div>
-    <?php } else { ?>
-        <div class="new-grid-table" style="overflow-x:auto;">
-            <table width="100%" cellspacing="0" cellpadding="8" border="0" style="border:1px solid #dcdcdc; border-collapse:collapse; font-size:13px;">
-                <thead>
-                    <tr style="background:#f4f6f8; text-align:left; border-bottom:1px solid #dcdcdc;">
-                        <th style="padding:10px;">Month / Period</th>
-                        <th style="padding:10px;">Period Dates</th>
-                        <th style="padding:10px;">Gross</th>
-                        <th style="padding:10px;">Deductions</th>
-                        <th style="padding:10px;">Net Pay</th>
-                        <th style="padding:10px;">Status</th>
-                        <th style="padding:10px;">Payslip (Payroll)</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <?php foreach ($this->payrollPayslips as $slip) { ?>
-                        <tr style="border-bottom:1px solid #eee;">
-                            <td style="padding:10px; font-weight:600;">
-                                <?php echo $this->escape(!empty($slip['month_label']) ? $slip['month_label'] : $slip['period_name']); ?>
-                                <?php if (!empty($slip['period_name']) && $slip['period_name'] !== $slip['month_label']) { ?>
-                                    <div style="font-size:11px; color:#777; font-weight:normal;"><?php echo $this->escape($slip['period_name']); ?></div>
-                                <?php } ?>
-                            </td>
-                            <td style="padding:10px; color:#555;">
-                                <?php echo $this->escape(($slip['start_date'] ?? '') . ' to ' . ($slip['end_date'] ?? '')); ?>
-                            </td>
-                            <td style="padding:10px;">GH&#8373; <?php echo number_format((float) ($slip['gross_salary'] ?? 0), 2); ?></td>
-                            <td style="padding:10px;">GH&#8373; <?php echo number_format((float) ($slip['deductions_total'] ?? 0), 2); ?></td>
-                            <td style="padding:10px; font-weight:600;">GH&#8373; <?php echo number_format((float) ($slip['net_salary'] ?? 0), 2); ?></td>
-                            <td style="padding:10px; text-transform:capitalize;"><?php echo $this->escape($slip['status'] ?? 'draft'); ?></td>
-                            <td style="padding:10px; white-space:nowrap;">
-                                <?php if (!empty($slip['view_url'])) { ?>
-                                    <a href="<?php echo $this->escape($slip['view_url']); ?>" target="_blank" rel="noopener"
-                                       style="color:#1d4ed8; font-weight:600; text-decoration:underline; margin-right:10px;">
-                                        View Payslip
-                                    </a>
-                                <?php } ?>
-                                <?php if (!empty($slip['download_url'])) { ?>
-                                    <a href="<?php echo $this->escape($slip['download_url']); ?>" target="_blank" rel="noopener"
-                                       style="color:#047857; text-decoration:underline;">
-                                        Download PDF
-                                    </a>
-                                <?php } ?>
-                            </td>
-                        </tr>
-                    <?php } ?>
-                </tbody>
-            </table>
-        </div>
-    <?php } ?>
-</div>
 				
 				<div class="new-form-ui-submit">
 			<?php	/*	If the login employee has edit privilege then show edit ...		*/

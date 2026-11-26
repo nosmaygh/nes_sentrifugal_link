@@ -70,6 +70,12 @@ class Default_EmppayslipsController extends Zend_Controller_Action
 		  	$this->view->id=$userid;
 		  	$this->view->employeedata = $employeeData[0];
 
+			$empCode = !empty($employeeData[0]['employeeId']) ? $employeeData[0]['employeeId'] : '';
+		  	$payrollResp = Default_Model_NosmayPayrollClient::getEmployeePayslips($empCode);
+		  	$this->view->payrollPayslips = $payrollResp['payslips'];
+		  	$this->view->payrollPayslipsError = $payrollResp['success'] ? '' : $payrollResp['message'];
+		  	$this->view->payrollPortalUrl = isset($payrollResp['portal_payslips_url']) ? $payrollResp['portal_payslips_url'] : '';
+
 		  	if($this->getRequest()->getPost())
 		  	{
 		  	}
@@ -116,6 +122,12 @@ class Default_EmppayslipsController extends Zend_Controller_Action
 		 		}
 		 		$this->view->id=$userid;
 		 		$this->view->employeedata = $employeeData[0];
+
+				$empCode = !empty($employeeData[0]['employeeId']) ? $employeeData[0]['employeeId'] : '';
+				$payrollResp = Default_Model_NosmayPayrollClient::getEmployeePayslips($empCode);
+				$this->view->payrollPayslips = $payrollResp['payslips'];
+				$this->view->payrollPayslipsError = $payrollResp['success'] ? '' : $payrollResp['message'];
+				$this->view->payrollPortalUrl = isset($payrollResp['portal_payslips_url']) ? $payrollResp['portal_payslips_url'] : '';
 
 		 		if($this->getRequest()->getPost())
 		 		{
